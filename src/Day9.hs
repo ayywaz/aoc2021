@@ -4,7 +4,7 @@ import Control.Monad (when)
 import Data.Char (digitToInt)
 import Data.List (sortBy, transpose)
 import Data.List.Split (splitOn)
-import Lib (readInput)
+import Lib (readInput, changeValue)
 import State (State (State, runState), evalState, get, put, runState)
 
 testInput :: [String]
@@ -34,12 +34,6 @@ task1 grid = sum $ map (foldl (\a (x, b1, b2) -> a + if b1 && b2 then digitToInt
 
 executeTask1 :: IO Int
 executeTask1 = task1 <$> processInput
-
-changeValue :: (Int, Int) -> a -> [[a]] -> [[a]]
-changeValue (x, y) val grid = prevRows ++ [prevElems ++ [val] ++ nextElems] ++ nextRows
-  where
-    (prevRows, curRow : nextRows) = splitAt x grid
-    (prevElems, _ : nextElems) = splitAt y curRow
 
 type Visited = State [[Bool]]
 

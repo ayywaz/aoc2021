@@ -22,6 +22,9 @@ instance Monad (State s) where
 evalState :: State s a -> s -> a
 evalState st = fst . runState st
 
+execState :: State s a -> s -> s
+execState st = snd . runState st
+
 get :: State s s
 get = State $ \s -> (s, s)
 
