@@ -25,9 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      Day09
       Day10
       Day11
-      Day9
       Lib
       Queue
       State
