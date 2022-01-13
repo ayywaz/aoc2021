@@ -1,11 +1,10 @@
 module Lib where
-import Data.List.Split (splitOn)
 
 readInput :: Int -> IO String
 readInput i = readFile $ "input/Day" ++ (if length (show i) == 1 then "0" else "") ++ show i ++ ".txt"
 
 readLines :: Int -> IO [String]
-readLines = fmap (splitOn "\n") . readInput
+readLines = fmap lines . readInput
 
 changeValue :: (Int, Int) -> a -> [[a]] -> [[a]]
 changeValue (x, y) val grid = prevRows ++ [prevElems ++ [val] ++ nextElems] ++ nextRows
