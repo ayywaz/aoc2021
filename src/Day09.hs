@@ -4,16 +4,14 @@ import Control.Monad (when)
 import Data.Char (digitToInt)
 import Data.List (sortBy, transpose)
 import Data.List.Split (splitOn)
-import Lib (readInput, changeValue)
+import Lib (changeValue, readLines)
 import State (State (State, runState), evalState, get, put, runState)
 
 testInput :: [String]
 testInput = ["2199943210", "3987894921", "9856789892", "8767896789", "9899965678"]
 
 processInput :: IO [String]
-processInput = do
-  input <- readInput 9
-  return $ splitOn "\n" input
+processInput = readLines 9
 
 isFirstOneSmallest :: Ord a => a -> a -> a -> Bool
 isFirstOneSmallest a b c

@@ -3,13 +3,13 @@ module Day10 where
 import Data.List (sort)
 import Data.List.Split (splitOn)
 import Data.Maybe (mapMaybe)
-import Lib (readInput)
+import Lib (readLines)
 
 testInput :: [String]
 testInput = ["[({(<(())[]>[[{[]{<()<>>", "[(()[<>])]({[<{<<[]>>(", "{([(<{}[<>[]}>{[]{[(<()>", "(((({<>}<{<{<>}{[]{[]{}", "[[<[([]))<([[{}[[()]]]", "[{[{({}]{}}([{[{{{}}([]", "{<[[]]>}<{[{[{[]{()[[[]", "[<(<(<(<{}))><([]([]()", "<{([([[(<>()){}]>(<<{{", "<{([{{}}[<[[[<>{}]]]>[]]"]
 
 processInput :: IO [String]
-processInput = splitOn "\n" <$> readInput 10
+processInput = readLines 10
 
 openers :: [Char]
 openers = "[(<{"

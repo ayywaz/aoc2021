@@ -5,14 +5,14 @@ import Data.Char (digitToInt)
 import Data.List (elemIndex)
 import Data.List.Split (splitOn)
 import Data.Maybe (fromJust)
-import Lib (modifyValue, readInput)
+import Lib (modifyValue, readLines)
 import State (State, evalState, get, modify)
 
 testInput :: [[Char]]
 testInput = ["5483143223", "2745854711", "5264556173", "6141336146", "6357385478", "4167524645", "2176841721", "6882881134", "4846848554", "5283751526"]
 
 processInput :: IO [String]
-processInput = splitOn "\n" <$> readInput 11
+processInput = readLines 11
 
 type Grid = State [[Int]]
 
