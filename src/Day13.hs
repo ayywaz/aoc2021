@@ -5,7 +5,6 @@ import Data.List (transpose)
 import Data.List.Split (splitOn, splitWhen)
 import Data.Tuple (swap)
 import Lib (changeValue, readLines)
-import State (execState, modify)
 
 processInput :: IO ([[Bool]], [(Char, Int)])
 processInput = do
@@ -13,7 +12,7 @@ processInput = do
   let parsedCoords = map (\x -> let (f, _ : s) = break (== ',') x in (read f, read s)) coords
   -- adding 2 to height makes no sense (should be 1) but fixes the output :/
   let (w, h) = bimap succ (+ 2) $ foldl1 (\(x1, y1) (x2, y2) -> (max x1 x2, max y1 y2)) parsedCoords
-  let board = execState (mapM (\c -> modify $ changeValue (swap c) True) parsedCoords) $ replicate h $ replicate w False
+  let board = foldl (\g c -> changeValue (swap c) True g) (replicate h $ replicate w False) parsedCoords
   let parsedFolds = map (\x -> let (f, _ : s) = break (== '=') x in (last f, read s)) folds
   return (board, parsedFolds)
 
@@ -27,7 +26,7 @@ task1 :: ([[Bool]], [(Char, Int)]) -> Int
 task1 (grid, folds) = sum $ map (length . filter id) $ applyFold (head folds) grid
 
 task2 :: ([[Bool]], [(Char, Int)]) -> [String]
-task2 (grid, folds) = map (map (\x -> if x then '█' else ' ')) $ execState (mapM (modify . applyFold) folds) grid
+task2 = map (map (\x -> if x then '█' else ' ')) . uncurry (foldl (flip applyFold))
 
 printResult :: [String] -> IO ()
 printResult = mapM_ putStrLn
