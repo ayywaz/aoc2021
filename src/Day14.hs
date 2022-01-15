@@ -23,7 +23,7 @@ task1 :: (String, [(String, Char)]) -> Int
 task1 (initial, cmds) = last counts - head counts
   where
     counts = sort $ map length $ group $ sort final
-    final = foldl (flip $ const $ applyStep1 cmds) initial [1 .. 10]
+    final = iterate (applyStep1 cmds) initial !! 10
 
 type Letters = Map.Map Char Int
 
@@ -42,6 +42,6 @@ applyStep2 cmds (letters, pairs) = foldl (applyPair cmds) (letters, Map.empty) (
 task2 :: (String, [(String, Char)]) -> Int
 task2 (s, cmds) = last counts - head counts
   where
-    counts = sort $ map snd $ Map.toList $ fst $ foldl (flip $ const $ applyStep2 (Map.fromList cmds)) (letters, pairs) [1 .. 40]
-    letters = Map.fromList $ map (\l -> (head l, length l)) $ group $ sort s
-    pairs = Map.fromList $ map (\l -> (head l, length l)) $ group $ sort $ zipWith (\a b -> [a, b]) s $ drop 1 s
+    counts = sort $ map snd $ Map.toList $ fst $ iterate (applyStep2 (Map.fromList cmds)) (letters, pairs) !! 40
+    letters = Map.fromListWith (+) $ map (\x -> (x, 1)) s
+    pairs = Map.fromListWith (+) $ zipWith (\a b -> ([a, b], 1)) s $ drop 1 s
