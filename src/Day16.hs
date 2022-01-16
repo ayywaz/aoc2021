@@ -86,6 +86,7 @@ calculatePacket (Packet _ t _ v (Just l))
   | t == 5 = if head values < values !! 1 then 1 else 0
   | t == 6 = if head values > values !! 1 then 1 else 0
   | t == 7 = if head values == values !! 1 then 1 else 0
+  | otherwise = error "Not possible packet type"
   where
     values = map calculatePacket l
 
