@@ -14,10 +14,7 @@ processInput :: IO [String]
 processInput = readLines 15
 
 changeValue :: (Int, Int) -> a -> V.Vector (V.Vector a) -> V.Vector (V.Vector a)
-changeValue (x, y) val grid = V.concat [prevRows, V.singleton $ V.concat [prevElems, V.singleton val, V.tail nextElems], V.tail nextRows]
-  where
-    (prevRows, nextRows) = V.splitAt x grid
-    (prevElems, nextElems) = V.splitAt y $ V.head nextRows
+changeValue (y, x) val grid = grid V.// [(y, grid V.! y V.// [(x, val)])]
 
 generateNeighbors :: (Int, Int) -> (Int, Int) -> [(Int, Int)]
 generateNeighbors (h, w) (y, x) = [(y+i, x+j) | (i, j) <- template, y+i < h && y+i >= 0, x+j < w && x+j >= 0]
