@@ -2,7 +2,10 @@ module Day15 where
 
 import Data.Char (digitToInt)
 import Data.List (transpose)
+import qualified Data.IntMap as M
+import Data.Maybe (fromJust, isJust)
 import qualified Data.Set as S
+import qualified Data.IntSet as IS
 import qualified Data.Vector as V
 import Lib (readLines)
 import State (State, put)
@@ -17,20 +20,31 @@ changeValue :: (Int, Int) -> a -> V.Vector (V.Vector a) -> V.Vector (V.Vector a)
 changeValue (y, x) val grid = grid V.// [(y, grid V.! y V.// [(x, val)])]
 
 generateNeighbors :: (Int, Int) -> (Int, Int) -> [(Int, Int)]
-generateNeighbors (h, w) (y, x) = [(y+i, x+j) | (i, j) <- template, y+i < h && y+i >= 0, x+j < w && x+j >= 0]
-  where template = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+generateNeighbors (h, w) (y, x) = [(y + i, x + j) | (i, j) <- template, y + i < h && y + i >= 0, x + j < w && x + j >= 0]
+  where
+    template = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
 findLowestRisk :: (Int, Int) -> V.Vector (V.Vector Int) -> V.Vector (V.Vector Bool) -> S.Set (Int, (Int, Int)) -> Int
 findLowestRisk bounds@(h, w) v visited s
   | coords == (pred h, pred w) = price
   | visited V.! y V.! x = findLowestRisk bounds v visited newS
-  | otherwise = findLowestRisk bounds v newVisited $ foldr (S.insert . (\c -> (price + v V.! fst c V.! snd c, c)))  newS $ filter (\(y, x) -> not $ visited V.! y V.! x) $ generateNeighbors bounds coords
+  | otherwise = findLowestRisk bounds v newVisited $ foldr (S.insert . (\c -> (price + v V.! fst c V.! snd c, c))) newS $ filter (\(y, x) -> not $ visited V.! y V.! x) $ generateNeighbors bounds coords
   where
     newVisited = changeValue coords True visited
     ((price, coords@(y, x)), newS) = S.deleteFindMin s
 
+findLowestRisk' :: (Int, Int) -> V.Vector (V.Vector Int) -> M.IntMap IS.IntSet -> S.Set (Int, (Int, Int)) -> Int
+findLowestRisk' bounds@(h, w) v visited s
+  | coords == (pred h, pred w) = price
+  | isJust visSet && IS.member x (fromJust visSet) = findLowestRisk' bounds v visited newS
+  | otherwise = findLowestRisk' bounds v newVisited $ foldr (S.insert . (\c -> (price + v V.! fst c V.! snd c, c))) newS $ filter (\(y, x) -> not $ maybe False (IS.member x) $ M.lookup y visited) $ generateNeighbors bounds coords
+  where
+    newVisited = M.insert y (maybe (IS.singleton x) (IS.insert x) visSet) visited
+    ((price, coords@(y, x)), newS) = S.deleteFindMin s
+    visSet = M.lookup y visited
+
 task1 :: [String] -> Int
-task1 grid = findLowestRisk (h,w) vector visited s
+task1 grid = findLowestRisk (h, w) vector visited s
   where
     (h, w) = (length grid, length $ head grid)
     visited = V.replicate h $ V.replicate w False
@@ -45,6 +59,15 @@ task2 preGrid = findLowestRisk (h, w) vector visited s
   where
     (h, w) = (length grid, length $ head grid)
     visited = V.replicate h $ V.replicate w False
+    s = S.singleton (0, (0, 0))
+    vector = V.fromList $ map V.fromList grid
+    grid = concat $ take 5 $ iterate nextTile $ transpose $ concat $ take 5 $ iterate nextTile $ transpose $ map (map digitToInt) preGrid
+
+task2' :: [String] -> Int
+task2' preGrid = findLowestRisk' (h, w) vector visited s
+  where
+    (h, w) = (length grid, length $ head grid)
+    visited = M.empty
     s = S.singleton (0, (0, 0))
     vector = V.fromList $ map V.fromList grid
     grid = concat $ take 5 $ iterate nextTile $ transpose $ concat $ take 5 $ iterate nextTile $ transpose $ map (map digitToInt) preGrid
