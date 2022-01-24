@@ -16,17 +16,17 @@ type Vertex = (Coords, Coords)
 processInput :: IO [[Coords]]
 processInput = map (map (map read . splitOn ",") . tail) . splitOn [""] <$> readLines 19
 
-getDistances :: [Coords] -> [(Vertex, Distances)]
-getDistances cs = sortOn snd [((c1, c2), sort $ zipWith ((abs .) . (-)) c1 c2) | c1 <- cs, c2 <- cs, c1 < c2]
+getDistances :: [Coords] -> [(Distances, Vertex)]
+getDistances cs = sort [(sort $ zipWith ((abs .) . (-)) c1 c2, (c1, c2)) | c1 <- cs, c2 <- cs, c1 < c2]
 
-intersectionOne :: (Vertex, Distances) -> [(Vertex, Distances)] -> [(Vertex, Vertex)]
-intersectionOne (v1, d1) rest = map (\(v2, _) -> (v1, v2)) $ takeWhile (\(_, d2) -> d2 == d1) rest
+intersectionOne :: (Distances, Vertex) -> [(Distances, Vertex)] -> [(Vertex, Vertex)]
+intersectionOne (d1, v1) rest = map (\(_, v2) -> (v1, v2)) $ takeWhile (\(d2, _) -> d2 == d1) rest
 
-intersection :: [(Vertex, Distances)] -> [(Vertex, Distances)] -> [(Vertex, Vertex)]
-intersection ((c1, d1) : cs1) ((c2, d2) : cs2)
-  | d1 < d2 = intersection cs1 ((c2, d2) : cs2)
-  | d1 > d2 = intersection ((c1, d1) : cs1) cs2
-  | otherwise = concat [[(c1, c2)], intersectionOne (c1, d1) cs2, intersectionOne (c2, d2) cs1, intersection cs1 cs2]
+intersection :: [(Distances, Vertex)] -> [(Distances, Vertex)] -> [(Vertex, Vertex)]
+intersection ((d1, c1) : cs1) ((d2, c2) : cs2)
+  | d1 < d2 = intersection cs1 ((d2, c2) : cs2)
+  | d1 > d2 = intersection ((d1, c1) : cs1) cs2
+  | otherwise = concat [[(c1, c2)], intersectionOne (d1, c1) cs2, intersectionOne (d2, c2) cs1, intersection cs1 cs2]
 intersection _ _ = []
 
 type Permutation = [(Int, Int)]
@@ -65,7 +65,7 @@ findPermutation vs =
 
 type Nodes = State [([Coords], Bool)]
 
--- Computes incorrect result (compares 2 scanners at a time)
+-- Produces an incorrect result (compares 2 scanners at a time)
 dfs :: Int -> Maybe (Permutation, Coords) -> Nodes ()
 dfs _ Nothing = pure ()
 dfs index (Just (p, c)) = do
@@ -75,41 +75,46 @@ dfs index (Just (p, c)) = do
   put (prev ++ [(newCoords, True)] ++ next)
   mapM_ (\((c, _), i) -> dfs i (findPermutation $ intersection (getDistances newCoords) (getDistances c))) $ filter (\((_, b), i) -> i /= index && not b) $ zip s [0 ..]
 
--- Computes correct result (compares each unknown scanner with a pool of all known scanners)
--- Could be optimised to save pass on vertices and distances instead of recalculating them
-noDfs1 :: [[Coords]] -> Int -> S.Set Coords -> [Bool] -> (Permutation, Coords) -> S.Set Coords
-noDfs1 grid ind coords visited (permutation, offset)
-  | null b = newCoords
-  | otherwise = noDfs1 grid (fst $ head b) newCoords newVisited (snd $ head b)
-  where
-    b = mapMaybe (\i -> fmap (\a -> (i, a)) $ findPermutation $ intersection newDistances (getDistances $ grid !! i)) a
-    a = map snd $ filter (\(b, _) -> not b) $ zip newVisited [0 ..]
-    (prev, _ : next) = splitAt ind visited
-    newVisited = prev ++ [True] ++ next
-    newCoords = S.union coords $ S.fromList $ map (zipWith (+) offset . applyPermutation permutation) (grid !! ind)
-    newDistances = getDistances $ S.toList newCoords
+getDistances' :: S.Set Coords -> S.Set (Distances, Vertex)
+getDistances' s = let cs = S.toList s in S.fromList [(sort $ zipWith ((abs .) . (-)) c1 c2, (c1, c2)) | c1 <- cs, c2 <- cs, c1 < c2]
 
-noDfs2 :: [[Coords]] -> Int -> S.Set Coords -> [Bool] -> (Permutation, Coords) -> [Coords]
-noDfs2 grid ind coords visited (permutation, offset)
-  | null b = [offset]
-  | otherwise = offset : noDfs2 grid (fst $ head b) newCoords newVisited (snd $ head b)
+getDistances'' :: S.Set Coords -> S.Set Coords -> S.Set (Distances, Vertex)
+getDistances'' s1 s2 = let (cs1, cs2) = (S.toList s1, S.toList s2) in S.fromList [(sort $ zipWith ((abs .) . (-)) c1 c2, (c1, c2)) | c1 <- cs1, c2 <- cs2]
+
+-- Produces the correct result (compares each unknown scanner with a pool of all known scanners)
+noDfs1 :: [([Coords], [(Distances, Vertex)])] -> Int -> S.Set Coords -> S.Set (Distances, Vertex) -> [Bool] -> (Permutation, Coords) -> S.Set Coords
+noDfs1 grid ind coords distances visited (permutation, offset)
+  | null b = newCoords
+  | otherwise = noDfs1 grid (fst $ head b) newCoords newDistances newVisited (snd $ head b)
   where
-    b = mapMaybe (\i -> fmap (\a -> (i, a)) $ findPermutation $ intersection newDistances (getDistances $ grid !! i)) a
+    b = mapMaybe (\i -> fmap (\a -> (i, a)) $ findPermutation $ intersection (S.toList newDistances) (snd $ grid !! i)) a
     a = map snd $ filter (\(b, _) -> not b) $ zip newVisited [0 ..]
-    (prev, _ : next) = splitAt ind visited
-    newVisited = prev ++ [True] ++ next
-    newCoords = S.union coords $ S.fromList $ map (zipWith (+) offset . applyPermutation permutation) (grid !! ind)
-    newDistances = getDistances $ S.toList newCoords
+    newVisited = let (prev, _ : next) = splitAt ind visited in prev ++ [True] ++ next
+    coordDifference = (S.\\) (S.fromList $ map (zipWith (+) offset . applyPermutation permutation) (fst $ grid !! ind)) coords
+    newCoords = S.union coords coordDifference
+    newDistances = S.unions [distances, getDistances'' coordDifference coords, getDistances' coordDifference]
+
+noDfs2 :: [([Coords], [(Distances, Vertex)])] -> Int -> S.Set Coords -> S.Set (Distances, Vertex) -> [Bool] -> (Permutation, Coords) -> [Coords]
+noDfs2 grid ind coords distances visited (permutation, offset)
+  | null b = [offset]
+  | otherwise = offset : noDfs2 grid (fst $ head b) newCoords newDistances newVisited (snd $ head b)
+  where
+    b = mapMaybe (\i -> fmap (\a -> (i, a)) $ findPermutation $ intersection (S.toList newDistances) (snd $ grid !! i)) a
+    a = map snd $ filter (\(b, _) -> not b) $ zip newVisited [0 ..]
+    newVisited = let (prev, _ : next) = splitAt ind visited in prev ++ [True] ++ next
+    coordDifference = (S.\\) (S.fromList $ map (zipWith (+) offset . applyPermutation permutation) (fst $ grid !! ind)) coords
+    newCoords = S.union coords coordDifference
+    newDistances = S.unions [distances, getDistances'' coordDifference coords, getDistances' coordDifference]
 
 task1 :: [[Coords]] -> Int
 task1 cs = length corrected
   where
-    corrected = noDfs1 cs 0 S.empty (replicate (length cs) False) (head cubePermutations, [0, 0, 0])
+    corrected = noDfs1 (map (\x -> (x, getDistances x)) cs) 0 S.empty S.empty (replicate (length cs) False) (head cubePermutations, [0, 0, 0])
 
 task2 :: [[Coords]] -> Int
 task2 cs = maximum [sum $ zipWith ((abs .) . (-)) c1 c2 | c1 <- corrected, c2 <- corrected, c1 > c2]
   where
-    corrected = noDfs2 cs 0 S.empty (replicate (length cs) False) (head cubePermutations, [0, 0, 0])
+    corrected = noDfs2 (map (\x -> (x, getDistances x)) cs) 0 S.empty S.empty (replicate (length cs) False) (head cubePermutations, [0, 0, 0])
 
 testInput :: [[Coords]]
 testInput =
